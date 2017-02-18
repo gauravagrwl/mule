@@ -37,7 +37,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
@@ -82,7 +84,7 @@ public class DefaultTemporaryArtifactBuilderFactory implements TemporaryArtifact
       private ArtifactDeclaration artifactDeclaration;
       private List<File> artifactPluginFiles = new ArrayList<>();
       private List<File> artifactLibraryFiles = new ArrayList<>();
-      private List<ArtifactPluginDescriptor> artifactPluginDescriptors = new ArrayList<>();
+      private Set<ArtifactPluginDescriptor> artifactPluginDescriptors = new HashSet<>();
       private List<Class<? extends ConnectivityTestingStrategy>> connectivityTestingStrategyTypes = new ArrayList<>();
 
       @Override
@@ -134,6 +136,8 @@ public class DefaultTemporaryArtifactBuilderFactory implements TemporaryArtifact
               throw new MuleRuntimeException(e);
             }
           }).collect(toList()));
+
+          artifactPluginDescriptors = muleArtifactResourcesRegistry.getPluginDependenciesResolver().resolve(artifactPluginDescriptors);
 
           final TemporaryArtifactClassLoaderBuilder temporaryArtifactClassLoaderBuilder =
               muleArtifactResourcesRegistry.getTemporaryArtifactClassLoaderBuilderFactory()

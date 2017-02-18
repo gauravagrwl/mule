@@ -87,11 +87,6 @@ public class ServiceRegistryDescriptorLoaderRepository implements DescriptorLoad
         serviceRegistry.lookupProviders(descriptorLoaderClass, this.getClass().getClassLoader());
 
     for (DescriptorLoader loader : providers) {
-      // if (descriptorLoaders.containsKey(loader.getId())) {
-      // throw new IllegalStateException(format("Duplicated bundle descriptor loader ID: %s of class '%s'", loader.getId(),
-      // descriptorLoaderClass.getName()));
-      // }
-
       descriptorLoaders.add(loader);
     }
 

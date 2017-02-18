@@ -25,6 +25,7 @@ import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginRepository;
 import org.mule.runtime.deployment.model.internal.application.ApplicationClassLoaderBuilder;
 import org.mule.runtime.deployment.model.internal.application.MuleApplicationClassLoader;
+import org.mule.runtime.deployment.model.internal.plugin.PluginDependenciesResolver;
 import org.mule.runtime.module.artifact.classloader.ArtifactClassLoader;
 import org.mule.runtime.module.artifact.classloader.ClassLoaderLookupPolicy;
 import org.mule.runtime.module.artifact.classloader.ClassLoaderRepository;
@@ -61,13 +62,14 @@ public class DefaultApplicationFactoryTestCase extends AbstractMuleTestCase {
   private final ServiceRepository serviceRepository = mock(ServiceRepository.class);
   private final ExtensionModelLoaderRepository extensionModelLoaderRepository = mock(ExtensionModelLoaderRepository.class);
   private final ClassLoaderRepository classLoaderRepository = mock(ClassLoaderRepository.class);
+  private final PluginDependenciesResolver pluginDependenciesResolver = mock(PluginDependenciesResolver.class);
   private final PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory =
       mock(PolicyTemplateClassLoaderBuilderFactory.class);
   private final DefaultApplicationFactory applicationFactory =
       new DefaultApplicationFactory(applicationClassLoaderBuilderFactory, applicationDescriptorFactory,
                                     applicationPluginRepository, domainRepository, serviceRepository,
                                     extensionModelLoaderRepository,
-                                    classLoaderRepository, policyTemplateClassLoaderBuilderFactory);
+                                    classLoaderRepository, policyTemplateClassLoaderBuilderFactory, pluginDependenciesResolver);
 
   @Rule
   public TemporaryFolder muleHome = new SystemPropertyTemporaryFolder(MuleProperties.MULE_HOME_DIRECTORY_PROPERTY);

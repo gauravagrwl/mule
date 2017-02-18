@@ -25,7 +25,6 @@ public class ApplicationClassLoaderBuilderFactory {
   private final DeployableArtifactClassLoaderFactory<ApplicationDescriptor> applicationClassLoaderFactory;
   private final ArtifactPluginRepository artifactPluginRepository;
   private final ArtifactClassLoaderFactory<ArtifactPluginDescriptor> artifactPluginClassLoaderFactory;
-  private PluginDependenciesResolver pluginDependenciesResolver;
 
   /**
    * Creates an {@code ApplicationClassLoaderBuilderFactory} to create {@code ApplicationClassLoaderBuilder} instances.
@@ -33,18 +32,14 @@ public class ApplicationClassLoaderBuilderFactory {
    * @param applicationClassLoaderFactory factory for the class loader of the artifact resources and classes
    * @param artifactPluginRepository repository for artifact plugins provided by the runtime
    * @param artifactPluginClassLoaderFactory creates artifact plugin class loaders. Non null.
-   * @param pluginDependenciesResolver resolves artifact plugin dependencies. Non null
    */
   public ApplicationClassLoaderBuilderFactory(DeployableArtifactClassLoaderFactory<ApplicationDescriptor> applicationClassLoaderFactory,
                                               ArtifactPluginRepository artifactPluginRepository,
-                                              ArtifactClassLoaderFactory<ArtifactPluginDescriptor> artifactPluginClassLoaderFactory,
-                                              PluginDependenciesResolver pluginDependenciesResolver) {
+                                              ArtifactClassLoaderFactory<ArtifactPluginDescriptor> artifactPluginClassLoaderFactory) {
     checkArgument(artifactPluginClassLoaderFactory != null, "artifactPluginClassLoaderFactory cannot be null");
-    checkArgument(pluginDependenciesResolver != null, "pluginDependenciesResolver cannot be null");
     this.applicationClassLoaderFactory = applicationClassLoaderFactory;
     this.artifactPluginRepository = artifactPluginRepository;
     this.artifactPluginClassLoaderFactory = artifactPluginClassLoaderFactory;
-    this.pluginDependenciesResolver = pluginDependenciesResolver;
   }
 
   /**
@@ -54,7 +49,7 @@ public class ApplicationClassLoaderBuilderFactory {
    */
   public ApplicationClassLoaderBuilder createArtifactClassLoaderBuilder() {
     return new ApplicationClassLoaderBuilder(applicationClassLoaderFactory, artifactPluginRepository,
-                                             artifactPluginClassLoaderFactory, pluginDependenciesResolver);
+                                             artifactPluginClassLoaderFactory);
   }
 
 }

@@ -49,15 +49,13 @@ public class ToolingPluginClassLoaderBuilder extends AbstractArtifactClassLoader
    * {@inheritDoc}
    *
    * @param artifactPluginDescriptor desired plugin to generate an {@link ArtifactClassLoader} for.
-   * @param pluginDependenciesResolver resolves artifact plugin dependencies. Non null
    * @see #build()
    */
   public ToolingPluginClassLoaderBuilder(DeployableArtifactClassLoaderFactory artifactClassLoaderFactory,
                                          ArtifactPluginRepository artifactPluginRepository,
                                          ArtifactClassLoaderFactory<ArtifactPluginDescriptor> artifactPluginClassLoaderFactory,
-                                         ArtifactPluginDescriptor artifactPluginDescriptor,
-                                         PluginDependenciesResolver pluginDependenciesResolver) {
-    super(artifactPluginRepository, artifactPluginClassLoaderFactory, pluginDependenciesResolver);
+                                         ArtifactPluginDescriptor artifactPluginDescriptor) {
+    super(artifactPluginRepository, artifactPluginClassLoaderFactory);
     this.artifactPluginDescriptor = artifactPluginDescriptor;
     this.artifactClassLoaderFactory = artifactClassLoaderFactory;
   }

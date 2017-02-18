@@ -21,6 +21,7 @@ import org.mule.runtime.deployment.model.api.plugin.ArtifactPlugin;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginRepository;
 import org.mule.runtime.deployment.model.internal.application.ApplicationClassLoaderBuilder;
+import org.mule.runtime.deployment.model.internal.plugin.PluginDependenciesResolver;
 import org.mule.runtime.module.artifact.classloader.ClassLoaderRepository;
 import org.mule.runtime.module.artifact.classloader.MuleDeployableArtifactClassLoader;
 import org.mule.runtime.module.artifact.descriptor.BundleDependency;
@@ -41,6 +42,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Creates default mule applications
@@ -55,6 +58,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
   private final ExtensionModelLoaderRepository extensionModelLoaderRepository;
   private final ClassLoaderRepository classLoaderRepository;
   private final PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory;
+  private final PluginDependenciesResolver pluginDependenciesResolver;
   private MuleContextListenerFactory muleContextListenerFactory;
 
   public DefaultApplicationFactory(ApplicationClassLoaderBuilderFactory applicationClassLoaderBuilderFactory,
@@ -63,7 +67,8 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
                                    ServiceRepository serviceRepository,
                                    ExtensionModelLoaderRepository extensionModelLoaderRepository,
                                    ClassLoaderRepository classLoaderRepository,
-                                   PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory) {
+                                   PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory,
+                                   PluginDependenciesResolver pluginDependenciesResolver) {
     checkArgument(applicationClassLoaderBuilderFactory != null, "Application classloader builder factory cannot be null");
     checkArgument(applicationDescriptorFactory != null, "Application descriptor factory cannot be null");
     checkArgument(artifactPluginRepository != null, "Artifact plugin repository cannot be null");
@@ -72,6 +77,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
     checkArgument(extensionModelLoaderRepository != null, "extensionModelLoaderRepository cannot be null");
     checkArgument(classLoaderRepository != null, "classLoaderRepository cannot be null");
     checkArgument(policyTemplateClassLoaderBuilderFactory != null, "policyClassLoaderBuilderFactory cannot be null");
+    checkArgument(pluginDependenciesResolver != null, "pluginDependenciesResolver cannot be null");
 
     this.classLoaderRepository = classLoaderRepository;
     this.applicationClassLoaderBuilderFactory = applicationClassLoaderBuilderFactory;
@@ -81,6 +87,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
     this.serviceRepository = serviceRepository;
     this.extensionModelLoaderRepository = extensionModelLoaderRepository;
     this.policyTemplateClassLoaderBuilderFactory = policyTemplateClassLoaderBuilderFactory;
+    this.pluginDependenciesResolver = pluginDependenciesResolver;
   }
 
   public void setMuleContextListenerFactory(MuleContextListenerFactory muleContextListenerFactory) {
@@ -110,23 +117,32 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
       throw new DeploymentException(createStaticMessage(format("Domain '%s' has to be deployed in order to deploy Application '%s'",
                                                                descriptor.getDomain(), descriptor.getName())));
     }
+
     List<ArtifactPluginDescriptor> pluginDescriptors = createArtifactPluginDescriptors(descriptor);
 
-    ApplicationClassLoaderBuilder artifactClassLoaderBuilder = applicationClassLoaderBuilderFactory.createArtifactClassLoaderBuilder();
+    Set<ArtifactPluginDescriptor> applicationPluginDescriptors =
+        concat(artifactPluginRepository.getContainerArtifactPluginDescriptors().stream(), pluginDescriptors.stream())
+            .collect(Collectors.toSet());
+
+    Set<ArtifactPluginDescriptor> resolvedArtifactPluginDescriptors =
+        pluginDependenciesResolver.resolve(applicationPluginDescriptors);
+
+    ApplicationClassLoaderBuilder artifactClassLoaderBuilder =
+        applicationClassLoaderBuilderFactory.createArtifactClassLoaderBuilder();
     MuleDeployableArtifactClassLoader applicationClassLoader =
         artifactClassLoaderBuilder
-            .setDomain(domain).addArtifactPluginDescriptors(pluginDescriptors.toArray(new ArtifactPluginDescriptor[0]))
+            .setDomain(domain)
+            .addArtifactPluginDescriptors(resolvedArtifactPluginDescriptors.toArray(new ArtifactPluginDescriptor[0]))
             .setArtifactId(descriptor.getName()).setArtifactDescriptor(descriptor).build();
 
-    List<ArtifactPluginDescriptor> applicationPluginDescriptors =
-        concat(artifactPluginRepository.getContainerArtifactPluginDescriptors().stream(), descriptor.getPlugins().stream())
-            .collect(toList());
 
-    List<ArtifactPlugin> artifactPlugins = createArtifactPluginList(applicationClassLoader, artifactClassLoaderBuilder.getEffectiveArtifactPluginDescriptors());
+    List<ArtifactPlugin> artifactPlugins =
+        createArtifactPluginList(applicationClassLoader, resolvedArtifactPluginDescriptors);
 
     MuleApplicationPolicyProvider applicationPolicyProvider =
         new MuleApplicationPolicyProvider(
-                                          new DefaultPolicyTemplateFactory(policyTemplateClassLoaderBuilderFactory),
+                                          new DefaultPolicyTemplateFactory(policyTemplateClassLoaderBuilderFactory,
+                                                                           pluginDependenciesResolver),
                                           new DefaultPolicyInstanceProviderFactory(
                                                                                    serviceRepository,
                                                                                    classLoaderRepository,
@@ -165,7 +181,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
   }
 
   private List<ArtifactPlugin> createArtifactPluginList(MuleDeployableArtifactClassLoader applicationClassLoader,
-                                                        List<ArtifactPluginDescriptor> plugins) {
+                                                        Set<ArtifactPluginDescriptor> plugins) {
     return plugins.stream()
         .map(artifactPluginDescriptor -> new DefaultArtifactPlugin(getArtifactPluginId(applicationClassLoader.getArtifactId(),
                                                                                        artifactPluginDescriptor.getName()),

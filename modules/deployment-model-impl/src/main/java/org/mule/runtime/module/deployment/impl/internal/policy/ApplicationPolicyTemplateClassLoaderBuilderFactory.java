@@ -21,7 +21,6 @@ public class ApplicationPolicyTemplateClassLoaderBuilderFactory implements Polic
   private final DeployableArtifactClassLoaderFactory artifactClassLoaderFactory;
   private final ArtifactPluginRepository artifactPluginRepository;
   private final ArtifactClassLoaderFactory artifactPluginClassLoaderFactory;
-  private final PluginDependenciesResolver pluginDependenciesResolver;
 
   /**
    * Creates a new factory instance
@@ -30,22 +29,18 @@ public class ApplicationPolicyTemplateClassLoaderBuilderFactory implements Polic
    *        null.
    * @param artifactPluginRepository repository of plugins contained by the runtime. Must be not null.
    * @param artifactPluginClassLoaderFactory factory to create class loaders for each used plugin. Non be not null.
-   * @param pluginDependenciesResolver resolves artifact plugin dependencies. Non null
    */
   public ApplicationPolicyTemplateClassLoaderBuilderFactory(DeployableArtifactClassLoaderFactory artifactClassLoaderFactory,
                                                             ArtifactPluginRepository artifactPluginRepository,
-                                                            ArtifactClassLoaderFactory artifactPluginClassLoaderFactory,
-                                                            PluginDependenciesResolver pluginDependenciesResolver) {
+                                                            ArtifactClassLoaderFactory artifactPluginClassLoaderFactory) {
     this.artifactClassLoaderFactory = artifactClassLoaderFactory;
     this.artifactPluginRepository = artifactPluginRepository;
     this.artifactPluginClassLoaderFactory = artifactPluginClassLoaderFactory;
-    this.pluginDependenciesResolver = pluginDependenciesResolver;
   }
 
   @Override
   public PolicyTemplateClassLoaderBuilder createArtifactClassLoaderBuilder() {
     return new PolicyTemplateClassLoaderBuilder(artifactClassLoaderFactory, artifactPluginRepository,
-                                                artifactPluginClassLoaderFactory,
-                                                pluginDependenciesResolver);
+                                                artifactPluginClassLoaderFactory);
   }
 }

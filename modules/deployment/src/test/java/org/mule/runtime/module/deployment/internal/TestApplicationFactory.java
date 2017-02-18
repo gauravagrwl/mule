@@ -51,9 +51,10 @@ public class TestApplicationFactory extends DefaultApplicationFactory {
                                 ServiceRepository serviceRepository,
                                 ExtensionModelLoaderRepository extensionModelLoaderRepository,
                                 ClassLoaderRepository classLoaderRepository,
-                                PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory) {
+                                PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory,
+                                PluginDependenciesResolver pluginDependenciesResolver) {
     super(applicationClassLoaderBuilderFactory, applicationDescriptorFactory, artifactPluginRepository, domainRepository,
-          serviceRepository, extensionModelLoaderRepository, classLoaderRepository, policyTemplateClassLoaderBuilderFactory);
+          serviceRepository, extensionModelLoaderRepository, classLoaderRepository, policyTemplateClassLoaderBuilderFactory, pluginDependenciesResolver);
   }
 
   public static TestApplicationFactory createTestApplicationFactory(MuleApplicationClassLoaderFactory applicationClassLoaderFactory,
@@ -75,13 +76,12 @@ public class TestApplicationFactory extends DefaultApplicationFactory {
     ApplicationClassLoaderBuilderFactory applicationClassLoaderBuilderFactory =
         new ApplicationClassLoaderBuilderFactory(applicationClassLoaderFactory, applicationPluginRepository,
                                                  new TrackingArtifactClassLoaderFactory<>(artifactClassLoaderManager,
-                                                                                          new ArtifactPluginClassLoaderFactory(moduleRepository)),
-                                                 pluginDependenciesResolver);
+                                                                                          new ArtifactPluginClassLoaderFactory(moduleRepository)));
 
     return new TestApplicationFactory(applicationClassLoaderBuilderFactory, applicationDescriptorFactory,
                                       applicationPluginRepository, domainManager, serviceRepository,
                                       extensionModelLoaderRepository, artifactClassLoaderManager,
-                                      mock(PolicyTemplateClassLoaderBuilderFactory.class));
+                                      mock(PolicyTemplateClassLoaderBuilderFactory.class), pluginDependenciesResolver);
   }
 
   @Override

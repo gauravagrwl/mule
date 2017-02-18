@@ -51,8 +51,7 @@ public class TemporaryArtifactClassLoaderBuilderFactory {
    */
   public TemporaryArtifactClassLoaderBuilder createArtifactClassLoaderBuilder() {
     return new TemporaryArtifactClassLoaderBuilder(applicationPluginRepository, artifactPluginClassLoaderFactory,
-                                                   artifactClassLoaderFactory,
-                                                   pluginDependenciesResolver);
+                                                   artifactClassLoaderFactory);
   }
 
   /**

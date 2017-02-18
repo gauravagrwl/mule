@@ -36,13 +36,11 @@ public class PolicyTemplateClassLoaderBuilder extends AbstractArtifactClassLoade
    *        null.
    * @param artifactPluginRepository repository of plugins contained by the runtime. Must be not null.
    * @param artifactPluginClassLoaderFactory factory to create class loaders for each used plugin. Non be not null.
-   * @param pluginDependenciesResolver resolves artifact plugin dependencies. Non null
    */
   public PolicyTemplateClassLoaderBuilder(DeployableArtifactClassLoaderFactory artifactClassLoaderFactory,
                                           ArtifactPluginRepository artifactPluginRepository,
-                                          ArtifactClassLoaderFactory artifactPluginClassLoaderFactory,
-                                          PluginDependenciesResolver pluginDependenciesResolver) {
-    super(artifactPluginRepository, artifactPluginClassLoaderFactory, pluginDependenciesResolver);
+                                          ArtifactClassLoaderFactory artifactPluginClassLoaderFactory) {
+    super(artifactPluginRepository, artifactPluginClassLoaderFactory);
     this.artifactClassLoaderFactory = artifactClassLoaderFactory;
   }
 

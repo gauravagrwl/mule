@@ -49,13 +49,11 @@ public class TemporaryArtifactClassLoaderBuilder extends AbstractArtifactClassLo
    * @param artifactPluginRepository repository of plugins contained by the runtime. Must be not null.
    * @param artifactPluginClassLoaderFactory factory for creating class loaders for artifact plugins. Must be not null.
    * @param artifactClassLoaderFactory creates artifact class loaders from descriptors
-   * @param pluginDependenciesResolver resolves artifact plugin dependencies. Non null
    */
   public TemporaryArtifactClassLoaderBuilder(ArtifactPluginRepository artifactPluginRepository,
                                              ArtifactClassLoaderFactory<ArtifactPluginDescriptor> artifactPluginClassLoaderFactory,
-                                             DeployableArtifactClassLoaderFactory<ApplicationDescriptor> artifactClassLoaderFactory,
-                                             PluginDependenciesResolver pluginDependenciesResolver) {
-    super(artifactPluginRepository, artifactPluginClassLoaderFactory, pluginDependenciesResolver);
+                                             DeployableArtifactClassLoaderFactory<ApplicationDescriptor> artifactClassLoaderFactory) {
+    super(artifactPluginRepository, artifactPluginClassLoaderFactory);
 
     this.artifactClassLoaderFactory = artifactClassLoaderFactory;
   }

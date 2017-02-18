@@ -57,25 +57,25 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
   }
 
   @Override
-  public List<ArtifactPluginDescriptor> resolve(List<ArtifactPluginDescriptor> descriptors) {
+  public Set<ArtifactPluginDescriptor> resolve(Set<ArtifactPluginDescriptor> descriptors) {
 
-    List<ArtifactPluginDescriptor> resolvedPlugins = resolvePluginsDependencies(descriptors);
+    Set<ArtifactPluginDescriptor> resolvedPlugins = resolvePluginsDependencies(descriptors);
 
     verifyPluginExportedPackages(resolvedPlugins);
 
     return resolvedPlugins;
   }
 
-  private List<ArtifactPluginDescriptor> resolvePluginsDependencies(List<ArtifactPluginDescriptor> descriptors) {
+  private Set<ArtifactPluginDescriptor> resolvePluginsDependencies(Set<ArtifactPluginDescriptor> descriptors) {
     Set<BundleDescriptor> knownPlugins =
         descriptors.stream().map(ArtifactPluginDescriptor::getBundleDescriptor).collect(Collectors.toSet());
     descriptors = getArtifactsWithDependencies(descriptors, knownPlugins);
 
-
-    descriptors.sort((d1, d2) -> (d1.getName().compareTo(d2.getName())));
+    List<ArtifactPluginDescriptor> sortedDescriptors = new ArrayList<>(descriptors);
+    sortedDescriptors.sort((d1, d2) -> (d1.getName().compareTo(d2.getName())));
 
     List<ArtifactPluginDescriptor> resolvedPlugins = new LinkedList<>();
-    List<ArtifactPluginDescriptor> unresolvedPlugins = new LinkedList<>(descriptors);
+    List<ArtifactPluginDescriptor> unresolvedPlugins = new LinkedList<>(sortedDescriptors);
 
     boolean continueResolution = true;
 
@@ -103,10 +103,10 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
       throw new PluginResolutionError(createResolutionErrorMessage(unresolvedPlugins, resolvedPlugins));
     }
 
-    return resolvedPlugins;
+    return new HashSet<>(resolvedPlugins);
   }
 
-  private void verifyPluginExportedPackages(List<ArtifactPluginDescriptor> plugins) {
+  private void verifyPluginExportedPackages(Set<ArtifactPluginDescriptor> plugins) {
     final Map<String, List<String>> exportedPackages = new HashMap<>();
 
     boolean error = false;
@@ -138,10 +138,10 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
    * @return the plugins that were obtained initially plus all the ones that were found.
    * @throws DependencyNotFoundException if any dependency wasn't found properly
    */
-  private List<ArtifactPluginDescriptor> getArtifactsWithDependencies(List<ArtifactPluginDescriptor> pluginDescriptors,
-                                                                      Set<BundleDescriptor> visited) {
+  private Set<ArtifactPluginDescriptor> getArtifactsWithDependencies(Set<ArtifactPluginDescriptor> pluginDescriptors,
+                                                                     Set<BundleDescriptor> visited) {
     if (!pluginDescriptors.isEmpty()) {
-      List<ArtifactPluginDescriptor> foundDependencies = new ArrayList<>();
+      Set<ArtifactPluginDescriptor> foundDependencies = new HashSet<>();
       pluginDescriptors.stream()
           .filter(pluginDescriptor -> !pluginDescriptor.getClassLoaderModel().getDependencies().isEmpty())
           .filter(pluginDescriptor -> pluginDescriptor.getBundleDescriptor().getClassifier().isPresent() &&
@@ -153,13 +153,10 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
                   // TODO pablolagreca review this
                   if (dependency.getBundleUrl() != null) {
                     File pluginJarLocation = new File(dependency.getBundleUrl().getFile());
-                    try
-                    {
+                    try {
                       mulePluginLocation = new File("temp" + UUID.getUUID());
                       FileUtils.unzip(pluginJarLocation, mulePluginLocation);
-                    }
-                    catch (IOException e)
-                    {
+                    } catch (IOException e) {
                       throw new MuleRuntimeException(e);
                     }
                   } else {
