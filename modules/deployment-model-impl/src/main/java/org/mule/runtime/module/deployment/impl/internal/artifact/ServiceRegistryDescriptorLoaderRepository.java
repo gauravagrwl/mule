@@ -67,7 +67,7 @@ public class ServiceRegistryDescriptorLoaderRepository implements DescriptorLoad
   }
 
   protected static <T extends DescriptorLoader> String noRegisteredLoaderError(String id, Class<T> loaderClass) {
-    return format("There is no loader with ID='%s' and type '$s'", id, loaderClass.getName());
+    return format("There is no loader with ID='%s' and type '%s'", id, loaderClass.getName());
   }
 
   private void initializeDescriptorLoaders() {

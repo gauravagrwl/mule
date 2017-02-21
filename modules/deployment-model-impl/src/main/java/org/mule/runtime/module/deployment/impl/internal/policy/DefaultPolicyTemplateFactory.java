@@ -46,7 +46,8 @@ public class DefaultPolicyTemplateFactory implements PolicyTemplateFactory {
    * @param policyTemplateClassLoaderBuilderFactory creates class loader builders to create the class loaders for the created
    *        policy templates. Non null.
    */
-  public DefaultPolicyTemplateFactory(PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory, PluginDependenciesResolver pluginDependenciesResolver) {
+  public DefaultPolicyTemplateFactory(PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory,
+                                      PluginDependenciesResolver pluginDependenciesResolver) {
     checkArgument(policyTemplateClassLoaderBuilderFactory != null, "policyTemplateClassLoaderBuilderFactory cannot be null");
 
     this.policyTemplateClassLoaderBuilderFactory = policyTemplateClassLoaderBuilderFactory;

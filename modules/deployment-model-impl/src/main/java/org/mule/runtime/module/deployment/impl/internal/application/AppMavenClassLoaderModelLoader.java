@@ -6,7 +6,11 @@
  */
 package org.mule.runtime.module.deployment.impl.internal.application;
 
+import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.mule.runtime.core.config.bootstrap.ArtifactType.APP;
+import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_PLUGIN_CLASSIFIER;
 import static org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants.MAVEN;
+import static org.mule.runtime.module.deployment.impl.internal.plugin.MavenUtils.getPomModelFolder;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.config.bootstrap.ArtifactType;
 import org.mule.runtime.module.artifact.descriptor.BundleDependency;
@@ -15,12 +19,14 @@ import org.mule.runtime.module.artifact.descriptor.BundleScope;
 import org.mule.runtime.module.artifact.descriptor.ClassLoaderModel;
 import org.mule.runtime.module.artifact.descriptor.ClassLoaderModel.ClassLoaderModelBuilder;
 import org.mule.runtime.module.deployment.impl.internal.artifact.MavenClassLoaderModelLoader;
+import org.mule.runtime.module.deployment.impl.internal.plugin.MavenUtils;
 
 import java.io.File;
 import java.net.MalformedURLException;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.maven.model.Model;
 import org.eclipse.aether.resolution.DependencyResult;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 import org.slf4j.Logger;
@@ -48,14 +54,17 @@ public class AppMavenClassLoaderModelLoader extends MavenClassLoaderModelLoader 
                                   PreorderNodeListGenerator nlg) {
     final Set<BundleDependency> plugins = new HashSet<>();
     nlg.getDependencies(true).stream()
-        .filter(this::isMulePlugin)
         .forEach(dependency -> {
           final BundleDescriptor.Builder bundleDescriptorBuilder = new BundleDescriptor.Builder()
               .setArtifactId(dependency.getArtifact().getArtifactId())
               .setGroupId(dependency.getArtifact().getGroupId())
               .setVersion(dependency.getArtifact().getVersion())
-              .setType(dependency.getArtifact().getExtension())
-              .setClassifier(dependency.getArtifact().getClassifier());
+              .setType(dependency.getArtifact().getExtension());
+
+          String classifier = dependency.getArtifact().getClassifier();
+          if (!isEmpty(classifier)) {
+            bundleDescriptorBuilder.setClassifier(classifier);
+          }
 
           try {
             plugins.add(new BundleDependency.Builder()
@@ -70,13 +79,13 @@ public class AppMavenClassLoaderModelLoader extends MavenClassLoaderModelLoader 
     classLoaderModelBuilder.dependingOn(plugins);
   }
 
-  protected void loadUrls(File pluginFolder, ClassLoaderModelBuilder classLoaderModelBuilder,
+  protected void loadUrls(File applicationFolder, ClassLoaderModelBuilder classLoaderModelBuilder,
                           DependencyResult dependencyResult, PreorderNodeListGenerator nlg) {
     // Adding the exploded JAR root folder
     try {
-      classLoaderModelBuilder.containing(new File(pluginFolder, "classes").toURL());
+      classLoaderModelBuilder.containing(new File(applicationFolder, "classes").toURL());
       dependencyResult.getArtifactResults().stream()
-          .filter(artifactResult -> !"mule-plugin".equals(artifactResult.getArtifact().getClassifier()))
+          .filter(artifactResult -> !MULE_PLUGIN_CLASSIFIER.equals(artifactResult.getArtifact().getClassifier()))
           .forEach(artifactResult -> {
             try {
               classLoaderModelBuilder.containing(artifactResult.getArtifact().getFile().toURL());
@@ -90,7 +99,12 @@ public class AppMavenClassLoaderModelLoader extends MavenClassLoaderModelLoader 
   }
 
   @Override
+  protected Model getPomModel(File artifactFile) {
+    return getPomModelFolder(artifactFile);
+  }
+
+  @Override
   public boolean supportsArtifactType(ArtifactType artifactType) {
-    return artifactType.equals(ArtifactType.APP);
+    return artifactType.equals(APP);
   }
 }

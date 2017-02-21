@@ -77,7 +77,7 @@ public class EmbeddedController {
 
     File muleArtifactFolder = new File(applicationFolder, "META-INF/mule-artifact");
     muleArtifactFolder.mkdirs();
-    File descriptorFile = new File(muleArtifactFolder, "mule-app.json");
+    File descriptorFile = new File(muleArtifactFolder, "mule-application.json");
     File pomFile = new File(muleArtifactFolder, "pom.xml");
     copyFile(new File(artifactInfo.getDescriptorFile().getFile()), descriptorFile);
     copyFile(new File(artifactInfo.getPomFile().getFile()), pomFile);

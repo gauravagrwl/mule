@@ -30,7 +30,7 @@ public class EmbeddedContainerFactoryTestCase {
     ArtifactInfo application =
         new ArtifactInfo(Collections.singletonList(getClasspathResourceAsUri("mule-config.xml")), null,
                          getClasspathResourceAsUri("pom.xml").toURL(),
-                         getClasspathResourceAsUri("mule-app.json").toURL());
+                         getClasspathResourceAsUri("mule-application.json").toURL());
 
     EmbeddedContainer embeddedContainer =
         EmbeddedContainerFactory.create("4.0-SNAPSHOT", containerFolder.newFolder().toURL(), application);

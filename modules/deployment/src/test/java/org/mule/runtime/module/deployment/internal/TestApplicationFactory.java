@@ -52,9 +52,11 @@ public class TestApplicationFactory extends DefaultApplicationFactory {
                                 ExtensionModelLoaderRepository extensionModelLoaderRepository,
                                 ClassLoaderRepository classLoaderRepository,
                                 PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory,
-                                PluginDependenciesResolver pluginDependenciesResolver) {
+                                PluginDependenciesResolver pluginDependenciesResolver,
+                                ArtifactPluginDescriptorLoader artifactPluginDescriptorLoader) {
     super(applicationClassLoaderBuilderFactory, applicationDescriptorFactory, artifactPluginRepository, domainRepository,
-          serviceRepository, extensionModelLoaderRepository, classLoaderRepository, policyTemplateClassLoaderBuilderFactory, pluginDependenciesResolver);
+          serviceRepository, extensionModelLoaderRepository, classLoaderRepository, policyTemplateClassLoaderBuilderFactory,
+          pluginDependenciesResolver, artifactPluginDescriptorLoader);
   }
 
   public static TestApplicationFactory createTestApplicationFactory(MuleApplicationClassLoaderFactory applicationClassLoaderFactory,
@@ -81,7 +83,8 @@ public class TestApplicationFactory extends DefaultApplicationFactory {
     return new TestApplicationFactory(applicationClassLoaderBuilderFactory, applicationDescriptorFactory,
                                       applicationPluginRepository, domainManager, serviceRepository,
                                       extensionModelLoaderRepository, artifactClassLoaderManager,
-                                      mock(PolicyTemplateClassLoaderBuilderFactory.class), pluginDependenciesResolver);
+                                      mock(PolicyTemplateClassLoaderBuilderFactory.class), pluginDependenciesResolver,
+                                      artifactPluginDescriptorLoader);
   }
 
   @Override

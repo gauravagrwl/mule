@@ -27,12 +27,12 @@ public interface DescriptorLoader<T> {
   /**
    * Loads a described object
    *
-   * @param artifactFolder {@link File} where the current artifact to work with. Non null
+   * @param artifactFile {@link File} with the content of the artifact to work with. Non null
    * @param attributes collection of attributes describing the loader. Non null.
    * @return a {@link T} loaded with the given attributes from the artifact folder.
    * @throws InvalidDescriptorLoaderException when is not possible to load the object with the provided configuration.
    */
-  T load(File artifactFolder, Map<String, Object> attributes) throws InvalidDescriptorLoaderException;
+  T load(File artifactFile, Map<String, Object> attributes) throws InvalidDescriptorLoaderException;
 
   boolean supportsArtifactType(ArtifactType artifactType);
 

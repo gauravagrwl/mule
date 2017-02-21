@@ -28,7 +28,6 @@ import org.mule.runtime.module.artifact.descriptor.BundleDependency;
 import org.mule.runtime.module.deployment.impl.internal.artifact.ArtifactFactory;
 import org.mule.runtime.module.deployment.impl.internal.artifact.MuleContextListenerFactory;
 import org.mule.runtime.module.deployment.impl.internal.domain.DomainRepository;
-import org.mule.runtime.module.deployment.impl.internal.plugin.ArtifactPluginDescriptorFactory;
 import org.mule.runtime.module.deployment.impl.internal.plugin.ArtifactPluginDescriptorLoader;
 import org.mule.runtime.module.deployment.impl.internal.plugin.DefaultArtifactPlugin;
 import org.mule.runtime.module.deployment.impl.internal.policy.DefaultPolicyInstanceProviderFactory;
@@ -59,6 +58,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
   private final ClassLoaderRepository classLoaderRepository;
   private final PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory;
   private final PluginDependenciesResolver pluginDependenciesResolver;
+  private final ArtifactPluginDescriptorLoader pluginDescriptorLoader;
   private MuleContextListenerFactory muleContextListenerFactory;
 
   public DefaultApplicationFactory(ApplicationClassLoaderBuilderFactory applicationClassLoaderBuilderFactory,
@@ -68,7 +68,8 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
                                    ExtensionModelLoaderRepository extensionModelLoaderRepository,
                                    ClassLoaderRepository classLoaderRepository,
                                    PolicyTemplateClassLoaderBuilderFactory policyTemplateClassLoaderBuilderFactory,
-                                   PluginDependenciesResolver pluginDependenciesResolver) {
+                                   PluginDependenciesResolver pluginDependenciesResolver,
+                                   ArtifactPluginDescriptorLoader pluginDescriptorLoader) {
     checkArgument(applicationClassLoaderBuilderFactory != null, "Application classloader builder factory cannot be null");
     checkArgument(applicationDescriptorFactory != null, "Application descriptor factory cannot be null");
     checkArgument(artifactPluginRepository != null, "Artifact plugin repository cannot be null");
@@ -78,6 +79,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
     checkArgument(classLoaderRepository != null, "classLoaderRepository cannot be null");
     checkArgument(policyTemplateClassLoaderBuilderFactory != null, "policyClassLoaderBuilderFactory cannot be null");
     checkArgument(pluginDependenciesResolver != null, "pluginDependenciesResolver cannot be null");
+    checkArgument(pluginDescriptorLoader != null, "pluginDescriptorLoader cannot be null");
 
     this.classLoaderRepository = classLoaderRepository;
     this.applicationClassLoaderBuilderFactory = applicationClassLoaderBuilderFactory;
@@ -88,6 +90,7 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
     this.extensionModelLoaderRepository = extensionModelLoaderRepository;
     this.policyTemplateClassLoaderBuilderFactory = policyTemplateClassLoaderBuilderFactory;
     this.pluginDependenciesResolver = pluginDependenciesResolver;
+    this.pluginDescriptorLoader = pluginDescriptorLoader;
   }
 
   public void setMuleContextListenerFactory(MuleContextListenerFactory muleContextListenerFactory) {
@@ -163,18 +166,11 @@ public class DefaultApplicationFactory implements ArtifactFactory<Application> {
   }
 
   private List<ArtifactPluginDescriptor> createArtifactPluginDescriptors(ApplicationDescriptor descriptor) throws IOException {
-    // TODO(pablo.kraan): embedded - inject this shit
-    ArtifactPluginDescriptorLoader pluginDescriptorLoader =
-        new ArtifactPluginDescriptorLoader(new ArtifactPluginDescriptorFactory());
-
     List<ArtifactPluginDescriptor> pluginDescriptors = new ArrayList<>();
     for (BundleDependency bundleDependency : descriptor.getClassLoaderModel().getDependencies()) {
-      if (bundleDependency.getDescriptor().getClassifier().get().equals("mule-plugin")) {
+      if (bundleDependency.getDescriptor().isPlugin()) {
         File pluginZip = new File(bundleDependency.getBundleUrl().getFile());
-        File tempFolder = File.createTempFile("test", FilenameUtils.getBaseName(pluginZip.getName()));
-        tempFolder.delete();
-        tempFolder.mkdir();
-        pluginDescriptors.add(pluginDescriptorLoader.load(pluginZip, tempFolder));
+        pluginDescriptors.add(pluginDescriptorLoader.load(pluginZip));
       }
     }
     return pluginDescriptors;

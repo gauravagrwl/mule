@@ -144,21 +144,13 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
       Set<ArtifactPluginDescriptor> foundDependencies = new HashSet<>();
       pluginDescriptors.stream()
           .filter(pluginDescriptor -> !pluginDescriptor.getClassLoaderModel().getDependencies().isEmpty())
-          .filter(pluginDescriptor -> pluginDescriptor.getBundleDescriptor().getClassifier().isPresent() &&
-              "mule-plugin".equals(pluginDescriptor.getBundleDescriptor().getClassifier().get()))
+          .filter(pluginDescriptor -> pluginDescriptor.getBundleDescriptor().isPlugin())
           .forEach(pluginDescriptor -> pluginDescriptor.getClassLoaderModel().getDependencies()
               .forEach(dependency -> {
                 if (isPlugin(dependency) && !isResolvedDependency(visited, dependency.getDescriptor())) {
                   File mulePluginLocation;
-                  // TODO pablolagreca review this
                   if (dependency.getBundleUrl() != null) {
-                    File pluginJarLocation = new File(dependency.getBundleUrl().getFile());
-                    try {
-                      mulePluginLocation = new File("temp" + UUID.getUUID());
-                      FileUtils.unzip(pluginJarLocation, mulePluginLocation);
-                    } catch (IOException e) {
-                      throw new MuleRuntimeException(e);
-                    }
+                    mulePluginLocation = new File(dependency.getBundleUrl().getFile());
                   } else {
                     mulePluginLocation = dependenciesProvider.resolve(dependency.getDescriptor());
                   }
@@ -175,8 +167,7 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
   }
 
   private boolean isPlugin(BundleDependency dependency) {
-    return dependency.getDescriptor().getClassifier().isPresent()
-        && "mule-plugin".equals(dependency.getDescriptor().getClassifier().get());
+    return dependency.getDescriptor().isPlugin();
   }
 
   private void sanitizeExportedPackages(ArtifactPluginDescriptor pluginDescriptor,
@@ -278,8 +269,7 @@ public class BundlePluginDependenciesResolver implements PluginDependenciesResol
     boolean resolvedDependency = true;
 
     for (BundleDependency dependency : pluginDependencies) {
-      if (dependency.getDescriptor().getClassifier().isPresent()
-          && "mule-plugin".equals(dependency.getDescriptor().getClassifier().get())
+      if (dependency.getDescriptor().isPlugin()
           && findArtifactPluginDescriptor(dependency, resolvedPlugins) == null) {
         resolvedDependency = false;
         break;

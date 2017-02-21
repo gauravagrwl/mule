@@ -127,17 +127,16 @@ public class DefaultTemporaryArtifactBuilderFactory implements TemporaryArtifact
           File toolingTempFolder = new File(MuleContainerBootstrapUtils.getMuleTmpDir(), "tooling");
 
           artifactRootFolder = new File(toolingTempFolder, artifactId);
-          File tempPluginsFolder = new File(artifactRootFolder, "plugins");
-
           artifactPluginDescriptors.addAll(this.artifactPluginFiles.stream().map(file -> {
             try {
-              return muleArtifactResourcesRegistry.getArtifactPluginDescriptorLoader().load(file, tempPluginsFolder);
+              return muleArtifactResourcesRegistry.getArtifactPluginDescriptorLoader().load(file);
             } catch (IOException e) {
               throw new MuleRuntimeException(e);
             }
           }).collect(toList()));
 
-          artifactPluginDescriptors = muleArtifactResourcesRegistry.getPluginDependenciesResolver().resolve(artifactPluginDescriptors);
+          artifactPluginDescriptors =
+              muleArtifactResourcesRegistry.getPluginDependenciesResolver().resolve(artifactPluginDescriptors);
 
           final TemporaryArtifactClassLoaderBuilder temporaryArtifactClassLoaderBuilder =
               muleArtifactResourcesRegistry.getTemporaryArtifactClassLoaderBuilderFactory()

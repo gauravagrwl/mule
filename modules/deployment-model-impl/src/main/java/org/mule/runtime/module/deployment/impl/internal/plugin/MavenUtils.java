@@ -9,18 +9,23 @@ package org.mule.runtime.module.deployment.impl.internal.plugin;
 
 import static java.io.File.separator;
 import static java.lang.String.format;
+import static org.apache.commons.lang3.ArrayUtils.toPrimitive;
+import static org.mule.runtime.core.util.JarUtils.loadFileContentFrom;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_ARTIFACT_FOLDER;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_PLUGIN_POM;
 import static org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants.MAVEN;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor;
 import org.mule.runtime.module.artifact.descriptor.ArtifactDescriptorCreateException;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Optional;
+
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 /**
  * Provides utility methods to wrk with Maven
@@ -30,12 +35,38 @@ public class MavenUtils {
   /**
    * Returns the {@link Model} from a given artifact folder
    * 
-   * @param artifactFolder folder containing the exploded artifact file.
+   * @param artifactFile file containing the artifact content.
+   * @return the {@link Model} from the {@value ArtifactPluginDescriptor#MULE_PLUGIN_POM} file if available
+   * @throws ArtifactDescriptorCreateException if the artifact jar does not contain a
+   *         {@value ArtifactPluginDescriptor#MULE_PLUGIN_POM} file or the file can' be loaded
+   */
+  public static Model getPomModelFromJar(File artifactFile) {
+    String pomFilePath = MULE_ARTIFACT_FOLDER + separator + MULE_PLUGIN_POM;
+    try {
+      Optional<Byte[]> pomFileContentOptional = loadFileContentFrom(artifactFile, pomFilePath);
+      if (!pomFileContentOptional.isPresent()) {
+        throw new ArtifactDescriptorCreateException(format("The identifier '%s' requires the file '%s' within the artifact(error found while reading plugin '%s')",
+                                                           MAVEN, pomFilePath,
+                                                           artifactFile.getName()));
+      }
+      MavenXpp3Reader reader = new MavenXpp3Reader();
+      return reader.read(new ByteArrayInputStream(toPrimitive(pomFileContentOptional.get())));
+    } catch (IOException | XmlPullParserException e) {
+      throw new ArtifactDescriptorCreateException(format("There was an issue reading '%s' for the plugin '%s'",
+                                                         pomFilePath, artifactFile.getAbsolutePath()),
+                                                  e);
+    }
+  }
+
+  /**
+   * Returns the {@link Model} from a given artifact folder
+   *
+   * @param artifactFile folder containing the exploded artifact file.
    * @return the {@link Model} from the {@value ArtifactPluginDescriptor#MULE_PLUGIN_POM} file if available
    * @throws ArtifactDescriptorCreateException if the folder does not contain a {@value ArtifactPluginDescriptor#MULE_PLUGIN_POM}
    *         file or the file can' be loaded
    */
-  public static Model getPomModel(File artifactFolder) {
+  public static Model getPomModelFolder(File artifactFolder) {
     final File mulePluginPom = new File(artifactFolder, MULE_ARTIFACT_FOLDER + separator + MULE_PLUGIN_POM);
     if (!mulePluginPom.exists()) {
       throw new ArtifactDescriptorCreateException(format("The identifier '%s' requires the file '%s' (error found while reading plugin '%s')",
@@ -53,4 +84,5 @@ public class MavenUtils {
     }
     return model;
   }
+
 }

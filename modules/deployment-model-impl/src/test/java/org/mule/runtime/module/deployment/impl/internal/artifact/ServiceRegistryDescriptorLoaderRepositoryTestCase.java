@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mule.runtime.core.config.bootstrap.ArtifactType.PLUGIN;
+import static org.mule.runtime.core.config.bootstrap.ArtifactType.SERVICE;
 import static org.mule.runtime.module.deployment.impl.internal.artifact.ServiceRegistryDescriptorLoaderRepository.noRegisteredLoaderError;
 import org.mule.runtime.core.api.registry.ServiceRegistry;
 import org.mule.runtime.module.artifact.descriptor.BundleDescriptorLoader;
@@ -47,6 +48,7 @@ public class ServiceRegistryDescriptorLoaderRepositoryTestCase extends AbstractM
     Collection<ClassLoaderModelLoader> classLoaderModelLoaders = singleton(expectedClassLoaderModelLoader);
     when(serviceRegistry.lookupProviders(ClassLoaderModelLoader.class, getClass().getClassLoader()))
         .thenReturn(classLoaderModelLoaders);
+    when(expectedClassLoaderModelLoader.supportsArtifactType(PLUGIN)).thenReturn(true);
 
     repository.get(LOADER_ID, PLUGIN, ClassLoaderModelLoader.class);
     repository.get(LOADER_ID, PLUGIN, ClassLoaderModelLoader.class);
@@ -69,6 +71,7 @@ public class ServiceRegistryDescriptorLoaderRepositoryTestCase extends AbstractM
   public void findsLoader() throws Exception {
     ClassLoaderModelLoader expectedClassLoaderModelLoader = mock(ClassLoaderModelLoader.class);
     when(expectedClassLoaderModelLoader.getId()).thenReturn(LOADER_ID);
+    when(expectedClassLoaderModelLoader.supportsArtifactType(PLUGIN)).thenReturn(true);
     Collection<ClassLoaderModelLoader> classLoaderModelLoaders = singleton(expectedClassLoaderModelLoader);
     when(serviceRegistry.lookupProviders(ClassLoaderModelLoader.class, getClass().getClassLoader()))
         .thenReturn(classLoaderModelLoaders);

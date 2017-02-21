@@ -12,6 +12,8 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
+import static org.apache.commons.io.FileUtils.copyInputStreamToFile;
+import static org.apache.commons.lang3.ArrayUtils.toPrimitive;
 import static org.apache.maven.repository.internal.MavenRepositorySystemUtils.newSession;
 import static org.eclipse.aether.repository.RepositoryPolicy.CHECKSUM_POLICY_IGNORE;
 import static org.eclipse.aether.repository.RepositoryPolicy.UPDATE_POLICY_NEVER;
@@ -23,8 +25,12 @@ import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescrip
 import static org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants.EXPORTED_PACKAGES;
 import static org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants.EXPORTED_RESOURCES;
 import static org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants.MAVEN;
-import static org.mule.runtime.module.deployment.impl.internal.plugin.MavenUtils.getPomModel;
+import static org.mule.runtime.module.deployment.impl.internal.artifact.MavenUtils.getMavenLocalRepository;
+import static org.mule.runtime.module.deployment.impl.internal.plugin.MavenUtils.getPomModelFromJar;
 import org.mule.runtime.api.deployment.meta.MuleArtifactLoaderDescriptor;
+import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.api.i18n.I18nMessageFactory;
+import org.mule.runtime.core.util.JarUtils;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor;
 import org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants;
 import org.mule.runtime.deployment.model.internal.plugin.BundlePluginDependenciesResolver;
@@ -35,11 +41,14 @@ import org.mule.runtime.module.artifact.descriptor.ClassLoaderModel.ClassLoaderM
 import org.mule.runtime.module.artifact.descriptor.ClassLoaderModelLoader;
 import org.mule.runtime.module.artifact.descriptor.InvalidDescriptorLoaderException;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.maven.model.Model;
@@ -97,6 +106,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoader {
 
+  private static final String REPOSITORY_DIRECTORY_NAME = "repository";
   protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   private DefaultRepositorySystemSession session;
@@ -119,27 +129,37 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
    * Finally, it will also tell the resulting {@link ClassLoaderModel} which packages and/or resources has to export, consuming
    * the attributes from the {@link MuleArtifactLoaderDescriptor#getAttributes()} map.
    *
-   * @param artifactFolder {@link File} where the current plugin to work with.
+   * @param artifactFile {@link File} where the current plugin to work with.
    * @param attributes a set of attributes to work with, where the current implementation of this class will look for
    *        {@link MavenClassLoaderConstants#EXPORTED_PACKAGES} and {@link MavenClassLoaderConstants#EXPORTED_RESOURCES}
    * @return a {@link ClassLoaderModel} loaded with all its dependencies and URLs.
    * @see BundlePluginDependenciesResolver#getArtifactsWithDependencies(List, Set)
    */
   @Override
-  public final ClassLoaderModel load(File artifactFolder, Map<String, Object> attributes)
+  public final ClassLoaderModel load(File artifactFile, Map<String, Object> attributes)
       throws InvalidDescriptorLoaderException {
-    final Model model = getPomModel(artifactFolder);
+    final Model model = getPomModel(artifactFile);
     final ClassLoaderModelBuilder classLoaderModelBuilder = new ClassLoaderModelBuilder();
     classLoaderModelBuilder
         .exportingPackages(new HashSet<>(getAttribute(attributes, EXPORTED_PACKAGES)))
         .exportingResources(new HashSet<>(getAttribute(attributes, EXPORTED_RESOURCES)));
-    final DependencyResult dependencyResult = assemblyDependenciesFromPom(artifactFolder, model);
+    final DependencyResult dependencyResult = assemblyDependenciesFromPom(artifactFile, model);
     final PreorderNodeListGenerator nlg = new PreorderNodeListGenerator();
     // This adds a ton of things that not always make sense
     dependencyResult.getRoot().accept(nlg);
-    loadUrls(artifactFolder, classLoaderModelBuilder, dependencyResult, nlg);
+    loadUrls(artifactFile, classLoaderModelBuilder, dependencyResult, nlg);
     loadDependencies(classLoaderModelBuilder, dependencyResult, nlg);
     return classLoaderModelBuilder.build();
+  }
+
+  /**
+   * Template method to get the pom model from the artifact file
+   *
+   * @param artifactFile the artifact file
+   * @return the pom model
+   */
+  protected Model getPomModel(File artifactFile) {
+    return getPomModelFromJar(artifactFile);
   }
 
   protected abstract void loadDependencies(ClassLoaderModelBuilder classLoaderModelBuilder, DependencyResult dependencyResult,
@@ -161,7 +181,7 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
     return MULE_PLUGIN_CLASSIFIER.equals(dependency.getArtifact().getClassifier());
   }
 
-  private DependencyResult assemblyDependenciesFromPom(File pluginFolder, Model model)
+  private DependencyResult assemblyDependenciesFromPom(File artifactFolder, Model model)
       throws InvalidDescriptorLoaderException {
 
     Artifact defaultArtifact = new DefaultArtifact(model.getGroupId(), model.getArtifactId(),
@@ -170,16 +190,18 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
                                                    model.getVersion() != null ? model.getVersion()
                                                        : model.getParent().getVersion());
 
-    createRepositorySystem(pluginFolder, defaultArtifact);
+    createRepositorySystem(artifactFolder, defaultArtifact);
     final CollectRequest currentPluginRequest = new CollectRequest();
     try {
       final ArtifactDescriptorResult artifactDescriptorResult =
           system.readArtifactDescriptor(session, new ArtifactDescriptorRequest(defaultArtifact, null, null));
       List<Dependency> dependencies = artifactDescriptorResult.getDependencies();
       List<Dependency> dependenciesWithExclusions = new ArrayList<>();
+      List<Dependency> pluginDependencies = new ArrayList<>();
       dependencies.stream()
           .forEach(dependency -> {
-            if ("mule-plugin".equals(dependency.getArtifact().getClassifier())) {
+            if (MULE_PLUGIN_CLASSIFIER.equals(dependency.getArtifact().getClassifier())) {
+              pluginDependencies.add(dependency);
               dependenciesWithExclusions.add(dependency.setExclusions(asList(new Exclusion("*", "*", "*", "*"))));
             } else {
               dependenciesWithExclusions.add(dependency);
@@ -204,21 +226,17 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
       DependencyNode node = e.getResult().getRoot();
       logUnresolvedArtifacts(node, e);
       throw new InvalidDescriptorLoaderException(format("There was an issue solving the dependencies for the plugin [%s]",
-                                                        pluginFolder.getAbsolutePath()),
+                                                        artifactFolder.getAbsolutePath()),
                                                  e);
     } catch (DependencyCollectionException e) {
       throw new InvalidDescriptorLoaderException(format("There was an issue resolving the dependency tree for the plugin [%s]",
-                                                        pluginFolder.getAbsolutePath()),
+                                                        artifactFolder.getAbsolutePath()),
                                                  e);
     } catch (ArtifactDescriptorException e) {
       throw new ArtifactDescriptorCreateException(format("There was an issue resolving the artifact descriptor for the plugin [%s]",
-                                                         pluginFolder.getAbsolutePath()),
+                                                         artifactFolder.getAbsolutePath()),
                                                   e);
     }
-  }
-
-  protected boolean isMulePlugin(Artifact artifact) {
-    return "mule-plugin".equals(artifact.getClassifier());
   }
 
   private List<String> getAttribute(Map<String, Object> attributes, String attribute) {
@@ -228,16 +246,34 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
     return (List<String>) attributeObject;
   }
 
-  private void createRepositorySystem(File pluginFolder, Artifact pluginArtifact) {
+  private void createRepositorySystem(File artifactFile, Artifact pluginArtifact) {
 
     session = newDefaultRepositorySystemSession();
     RepositorySystem repositorySystem = createRepositorySystem();
+
+    File localRepositoryDirectory = determineLocalRepositoryPath(artifactFile);
     session.setLocalRepositoryManager(repositorySystem
-        .newLocalRepositoryManager(session, new LocalRepository(MavenUtils.getMavenLocalRepository())));
+        .newLocalRepositoryManager(session, new LocalRepository(localRepositoryDirectory)));
     session.setOffline(false);
     session.setIgnoreArtifactDescriptorRepositories(true);
-    session.setWorkspaceReader(new PomWorkspaceReader(pluginFolder, pluginArtifact));
+    session.setWorkspaceReader(new PomWorkspaceReader(localRepositoryDirectory, artifactFile, pluginArtifact));
     system = repositorySystem;
+  }
+
+  private File determineLocalRepositoryPath(File artifactFile) {
+    File mavenLocalRepositoryDirectory = getMavenLocalRepository();
+    // TODO pablolagreca create issue to track this. For now we assume that if the artifact exists within a repository
+    // then we use this repository as local maven repository. This is the case of apps that have an internal repository.
+    // if the artifact file is a plugin and exists within a repository then all it's dependencies must be in that repository.
+    if (artifactFile.getAbsolutePath().contains(REPOSITORY_DIRECTORY_NAME)
+        && !artifactFile.getAbsolutePath().contains(mavenLocalRepositoryDirectory.getAbsolutePath())) {
+      while (!artifactFile.getParentFile().getName().equals(REPOSITORY_DIRECTORY_NAME)) {
+        artifactFile = artifactFile.getParentFile();
+      }
+      return artifactFile.getParentFile();
+    } else {
+      return mavenLocalRepositoryDirectory;
+    }
   }
 
   public RepositorySystem createRepositorySystem() {
@@ -321,19 +357,22 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
    */
   private class PomWorkspaceReader implements WorkspaceReader {
 
-    private final File pluginFolder;
+    private final File artifactFolder;
     private final Artifact pluginArtifact;
     final WorkspaceRepository workspaceRepository;
+    private final File localRepositoryDirectory;
 
     /**
-     * @param pluginFolder plugin's folder used to look for the POM file
+     * @param localRepositoryDirectory directory of the maven repo to load this artifact dependencies from
+     * @param artifactContent artifacts File with it's content used to look for the POM file
      * @param pluginArtifact plugin's artifact to compare, so that resolves the file in {@link #findArtifact(Artifact)} when it
      *        matches with the {@link #pluginArtifact}
      */
-    PomWorkspaceReader(File pluginFolder, Artifact pluginArtifact) {
-      this.pluginFolder = pluginFolder;
+    PomWorkspaceReader(File localRepositoryDirectory, File artifactContent, Artifact pluginArtifact) {
+      this.localRepositoryDirectory = localRepositoryDirectory;
+      this.artifactFolder = artifactContent;
       this.pluginArtifact = pluginArtifact;
-      this.workspaceRepository = new WorkspaceRepository(format("worskpace-repository-%s", pluginFolder.getName()));
+      this.workspaceRepository = new WorkspaceRepository(format("worskpace-repository-%s", artifactContent.getName()));
     }
 
     @Override
@@ -344,7 +383,24 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
     @Override
     public File findArtifact(Artifact artifact) {
       if (checkArtifact(artifact)) {
-        return new File(pluginFolder, MULE_ARTIFACT_FOLDER + separator + MULE_PLUGIN_POM);
+        String pathToPom = MULE_ARTIFACT_FOLDER + separator + MULE_PLUGIN_POM;
+        if (artifactFolder.getName().endsWith(".jar")) {
+          try {
+            Optional<Byte[]> pomContentOptional = JarUtils.loadFileContentFrom(artifactFolder, pathToPom);
+            Byte[] pomBytes = pomContentOptional.orElseThrow(() -> new MuleRuntimeException(I18nMessageFactory
+                .createStaticMessage(format("No pom file found in %s within file %s", artifactFolder, pathToPom))));
+            File pomLocation = new File(localRepositoryDirectory, format(".mule/plugins/%s/%s/%s/%s-%s",
+                                                                         artifact.getGroupId(), artifact.getArtifactId(),
+                                                                         artifact.getVersion(),
+                                                                         artifact.getArtifactId(), artifact.getVersion()));
+            copyInputStreamToFile(new ByteArrayInputStream(toPrimitive(pomBytes)), pomLocation);
+            return pomLocation;
+          } catch (IOException e) {
+            throw new MuleRuntimeException(e);
+          }
+        } else {
+          return new File(artifactFolder, pathToPom);
+        }
       }
       return null;
     }

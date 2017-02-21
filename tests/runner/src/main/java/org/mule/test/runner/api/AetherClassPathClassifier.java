@@ -695,7 +695,7 @@ public class AetherClassPathClassifier implements ClassPathClassifier {
    */
   private Artifact createPluginArtifact(String pluginCoords, Artifact rootArtifact, List<Dependency> directDependencies) {
     Optional<Dependency> pluginDependency = discoverDependency(pluginCoords, rootArtifact, directDependencies);
-    if (!pluginDependency.isPresent() || !pluginDependency.get().getScope().equals(PROVIDED)) {
+    if (!pluginDependency.isPresent()) {
       throw new IllegalStateException("Plugin '" + pluginCoords + "' in order to be resolved has to be declared as " + PROVIDED +
           " dependency of your Maven project (" + rootArtifact + ")");
     }

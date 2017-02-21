@@ -13,6 +13,7 @@ import static java.util.Collections.singleton;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 import static org.mockito.Mockito.mock;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.EXTENSION_BUNDLE_TYPE;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_PLUGIN_CLASSIFIER;
@@ -293,10 +294,7 @@ public class BundlePluginDependenciesResolverTestCase extends AbstractMuleTestCa
                                      ArtifactPluginDescriptor... expectedPluginDescriptors) {
     assertThat(resolvedPluginDescriptors.size(), equalTo(expectedPluginDescriptors.length));
 
-    Iterator<ArtifactPluginDescriptor> resolvedArtifactPluginDescriptorsIterator = resolvedPluginDescriptors.iterator();
-    for (int i = 0; i < resolvedPluginDescriptors.size(); i++) {
-      assertThat(resolvedArtifactPluginDescriptorsIterator.next(), equalTo(expectedPluginDescriptors[i]));
-    }
+    assertThat(resolvedPluginDescriptors, hasItems(expectedPluginDescriptors));
   }
 
   private void assertPluginExportedPackages(ArtifactPluginDescriptor pluginDescriptor, String... exportedPackages) {
