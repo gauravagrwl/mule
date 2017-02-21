@@ -197,11 +197,10 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
           system.readArtifactDescriptor(session, new ArtifactDescriptorRequest(defaultArtifact, null, null));
       List<Dependency> dependencies = artifactDescriptorResult.getDependencies();
       List<Dependency> dependenciesWithExclusions = new ArrayList<>();
-      List<Dependency> pluginDependencies = new ArrayList<>();
       dependencies.stream()
+          .filter(dependency -> !dependency.getScope().equalsIgnoreCase("test"))
           .forEach(dependency -> {
             if (MULE_PLUGIN_CLASSIFIER.equals(dependency.getArtifact().getClassifier())) {
-              pluginDependencies.add(dependency);
               dependenciesWithExclusions.add(dependency.setExclusions(asList(new Exclusion("*", "*", "*", "*"))));
             } else {
               dependenciesWithExclusions.add(dependency);

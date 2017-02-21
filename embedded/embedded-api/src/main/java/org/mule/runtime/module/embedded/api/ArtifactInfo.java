@@ -11,6 +11,8 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
 public class ArtifactInfo implements Serializable {
 
@@ -18,12 +20,19 @@ public class ArtifactInfo implements Serializable {
   private final URL classesFolder;
   private final URL pomFile;
   private final URL descriptorFile;
+  private final Map<String, String> applicationProperties;
 
-  public ArtifactInfo(List<URI> configs, URL classesFolder, URL pomFile, URL descriptorFile) {
+  public ArtifactInfo(List<URI> configs, URL classesFolder, URL pomFile, URL descriptorFile,
+                      Map<String, String> applicationProperties) {
     this.configs = configs;
     this.classesFolder = classesFolder;
     this.pomFile = pomFile;
     this.descriptorFile = descriptorFile;
+    this.applicationProperties = applicationProperties;
+  }
+
+  public Map<String, String> getApplicationProperties() {
+    return applicationProperties;
   }
 
   public List<URI> getConfigs() {

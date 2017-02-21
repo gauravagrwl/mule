@@ -30,6 +30,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class EmbeddedController {
 
@@ -88,6 +89,10 @@ public class EmbeddedController {
     applicationDescriptor.setAbsoluteResourcePaths(configResources.toArray(new String[0]));
 
     artifactResourcesRegistry.getDomainFactory().createArtifact(createDefaultDomainDir());
+
+    for (Map.Entry<String, String> applicationPropertiesEntry : artifactInfo.getApplicationProperties().entrySet()) {
+      setProperty(applicationPropertiesEntry.getKey(), applicationPropertiesEntry.getValue());
+    }
 
     application = artifactResourcesRegistry.getApplicationFactory().createAppFrom(applicationDescriptor);
   }

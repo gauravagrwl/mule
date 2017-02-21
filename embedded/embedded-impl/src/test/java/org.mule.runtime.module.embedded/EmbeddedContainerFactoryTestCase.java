@@ -7,13 +7,26 @@
 
 package org.mule.runtime.module.embedded;
 
+import static com.mashape.unirest.http.Unirest.post;
+import static java.lang.String.valueOf;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
 import org.mule.runtime.module.embedded.api.ArtifactInfo;
 import org.mule.runtime.module.embedded.api.EmbeddedContainer;
 import org.mule.runtime.module.embedded.api.EmbeddedContainerFactory;
+import org.mule.tck.junit4.rule.FreePortFinder;
 
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.exceptions.UnirestException;
+
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,19 +39,55 @@ public class EmbeddedContainerFactoryTestCase {
   public TemporaryFolder containerFolder = new TemporaryFolder();
 
   @Test
-  public void createsContainer() throws Exception {
+  public void applicationWithConnector() throws Exception {
+    doWithinApplication("http-echo", port -> {
+      try {
+        String httpBody = "test-message";
+        HttpResponse<String> response = post(String.format("http://localhost:%s/", port)).body(httpBody).asString();
+        assertThat(response.getBody(), is(httpBody));
+      } catch (UnirestException e) {
+        throw new RuntimeException(e);
+      }
+    });
+  }
+
+  @Test
+  public void applicationWithTestDependency() throws Exception {
+    doWithinApplication("http-echo", port -> {
+      try {
+        String httpBody = "org.apache.commons.collections.bag.AbstractBagDecorator";
+        HttpResponse<String> response =
+            null;
+        response = post(String.format("http://localhost:%s/", port)).body(httpBody).asString();
+        assertThat(response.getBody(), is(httpBody));
+      } catch (UnirestException e) {
+        throw new RuntimeException(e);
+      }
+    });
+  }
+
+  public void doWithinApplication(String applicaitonFolder, Consumer<Integer> portConsumer)
+      throws URISyntaxException, IOException {
+    Map<String, String> applicationProperties = new HashMap<>();
+    Integer httpListenerPort = new FreePortFinder(6000, 9000).find();
+    applicationProperties.put("httpPort", valueOf(httpListenerPort));
     ArtifactInfo application =
-        new ArtifactInfo(Collections.singletonList(getClasspathResourceAsUri("mule-config.xml")), null,
-                         getClasspathResourceAsUri("pom.xml").toURL(),
-                         getClasspathResourceAsUri("mule-application.json").toURL());
+        new ArtifactInfo(Collections
+            .singletonList(getClasspathResourceAsUri(applicaitonFolder + File.separator + "mule-config.xml")), null,
+                         getClasspathResourceAsUri(applicaitonFolder + File.separator + "pom.xml").toURL(),
+                         getClasspathResourceAsUri(applicaitonFolder + File.separator + "mule-application.json").toURL(),
+                         applicationProperties);
 
     EmbeddedContainer embeddedContainer =
         EmbeddedContainerFactory.create("4.0-SNAPSHOT", containerFolder.newFolder().toURL(), application);
 
-    // TODO(pablo.kraan): embedded - finish this test
     embeddedContainer.start();
-    Thread.sleep(5000);
-    embeddedContainer.stop();
+
+    try {
+      portConsumer.accept(httpListenerPort);
+    } finally {
+      embeddedContainer.stop();
+    }
   }
 
   private URI getClasspathResourceAsUri(String resource) throws URISyntaxException {

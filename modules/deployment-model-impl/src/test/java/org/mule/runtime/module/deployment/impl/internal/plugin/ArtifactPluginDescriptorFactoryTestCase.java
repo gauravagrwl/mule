@@ -20,8 +20,6 @@ import static org.mockito.Mockito.when;
 import static org.mule.runtime.container.internal.ClasspathModuleDiscoverer.EXPORTED_CLASS_PACKAGES_PROPERTY;
 import static org.mule.runtime.container.internal.ClasspathModuleDiscoverer.EXPORTED_RESOURCE_PROPERTY;
 import static org.mule.runtime.core.config.bootstrap.ArtifactType.PLUGIN;
-import static org.mule.runtime.core.util.FileUtils.stringToFile;
-import static org.mule.runtime.core.util.FileUtils.unzip;
 import static org.mule.runtime.core.util.JarUtils.appendJarFileEntries;
 import static org.mule.runtime.core.util.JarUtils.getUrlWithinJar;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_PLUGIN_CLASSIFIER;
@@ -41,7 +39,6 @@ import static org.mule.tck.ZipUtils.compress;
 import org.mule.runtime.api.deployment.meta.MuleArtifactLoaderDescriptor;
 import org.mule.runtime.api.deployment.meta.MulePluginModel;
 import org.mule.runtime.core.util.FileUtils;
-import org.mule.runtime.core.util.JarUtils;
 import org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor;
 import org.mule.runtime.module.artifact.classloader.ArtifactClassLoaderFilter;
 import org.mule.runtime.module.artifact.classloader.ClassLoaderFilterFactory;
@@ -71,7 +68,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
 import org.hamcrest.Matchers;
@@ -168,8 +164,8 @@ public class ArtifactPluginDescriptorFactoryTestCase extends AbstractMuleTestCas
     final File jar1 = createDummyJarFile(pluginTempLibFolder, "lib1.jar");
     final File jar2 = createDummyJarFile(pluginTempLibFolder, "lib2.jar");
     final File pluginFile = createPluginFile(new ZipUtils.ZipResource[] {
-            new ZipUtils.ZipResource(jar1.getAbsolutePath(), "lib/lib1.jar"),
-            new ZipUtils.ZipResource(jar2.getAbsolutePath(), "lib/lib2.jar")
+        new ZipUtils.ZipResource(jar1.getAbsolutePath(), "lib/lib1.jar"),
+        new ZipUtils.ZipResource(jar2.getAbsolutePath(), "lib/lib2.jar")
     });
 
     final URL[] libraries = new URL[] {getUrlWithinJar(pluginFile, "lib/lib1.jar"), getUrlWithinJar(pluginFile, "lib/lib2.jar")};
@@ -241,20 +237,21 @@ public class ArtifactPluginDescriptorFactoryTestCase extends AbstractMuleTestCas
     pluginModelBuilder.withClassLoaderModelDescriber().setId(INVALID_LOADER_ID);
 
     ArtifactPluginFileBuilder pluginFileBuilder =
-        new ArtifactPluginFileBuilder(PLUGIN_NAME).tempFolder(pluginsTempFolder.newFolder()).describedBy(pluginModelBuilder.build());
+        new ArtifactPluginFileBuilder(PLUGIN_NAME).tempFolder(pluginsTempFolder.newFolder())
+            .describedBy(pluginModelBuilder.build());
 
     File pluginJarLocation = createJarFileFromArtifactFile(pluginFileBuilder);
 
     expectedException.expect(ArtifactDescriptorCreateException.class);
     expectedException
-        .expectMessage(invalidClassLoaderModelIdError(pluginJarLocation, pluginModelBuilder.getClassLoaderModelDescriptorLoader()));
+        .expectMessage(invalidClassLoaderModelIdError(pluginJarLocation,
+                                                      pluginModelBuilder.getClassLoaderModelDescriptorLoader()));
 
     descriptorFactory.create(pluginJarLocation);
   }
 
-  private File createJarFileFromArtifactFile(ArtifactPluginFileBuilder pluginFileBuilder) throws IOException
-  {
-    // TODO	MULE-11456 - Once we moved everything to .jar, we won't need this hack
+  private File createJarFileFromArtifactFile(ArtifactPluginFileBuilder pluginFileBuilder) throws IOException {
+    // TODO MULE-11456 - Once we moved everything to .jar, we won't need this hack
     File artifactFile = pluginFileBuilder.getArtifactFile();
     File pluginJarLocation = new File(artifactFile.getParent(), artifactFile.getName().replace(".zip", ""));
     copyFile(artifactFile, pluginJarLocation);
@@ -268,9 +265,10 @@ public class ArtifactPluginDescriptorFactoryTestCase extends AbstractMuleTestCas
     pluginModelBuilder.withClassLoaderModelDescriber().setId(FILE_SYSTEM_POLICY_MODEL_LOADER_ID);
 
     ArtifactPluginFileBuilder pluginFileBuilder =
-        new ArtifactPluginFileBuilder(PLUGIN_NAME).tempFolder(pluginsTempFolder.newFolder()).describedBy(pluginModelBuilder.build());
+        new ArtifactPluginFileBuilder(PLUGIN_NAME).tempFolder(pluginsTempFolder.newFolder())
+            .describedBy(pluginModelBuilder.build());
 
-    // TODO	MULE-11456 - Once we moved everything to .jar, we won't need this hack
+    // TODO MULE-11456 - Once we moved everything to .jar, we won't need this hack
     File pluginJarLocation = createJarFileFromArtifactFile(pluginFileBuilder);
 
     expectedException.expect(ArtifactDescriptorCreateException.class);
@@ -406,8 +404,7 @@ public class ArtifactPluginDescriptorFactoryTestCase extends AbstractMuleTestCas
       return this;
     }
 
-    public void build() throws Exception
-    {
+    public void build() throws Exception {
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       addDescriptorProperty(byteArrayOutputStream, EXPORTED_CLASS_PACKAGES_PROPERTY, this.exportedClassPackages);
       addDescriptorProperty(byteArrayOutputStream, EXPORTED_RESOURCE_PROPERTY, this.exportedResources);
@@ -419,7 +416,8 @@ public class ArtifactPluginDescriptorFactoryTestCase extends AbstractMuleTestCas
       appendJarFileEntries(pluginFile, entries);
     }
 
-    private void addDescriptorProperty(ByteArrayOutputStream byteArrayOutputStream, String propertyName, String propertyValue) throws IOException {
+    private void addDescriptorProperty(ByteArrayOutputStream byteArrayOutputStream, String propertyName, String propertyValue)
+        throws IOException {
       if (!isEmpty(propertyValue)) {
         byteArrayOutputStream.write((propertyName + "=" + propertyValue).getBytes());
       }
