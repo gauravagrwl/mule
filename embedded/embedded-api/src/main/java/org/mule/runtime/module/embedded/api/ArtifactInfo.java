@@ -20,15 +20,22 @@ public class ArtifactInfo implements Serializable {
   private final URL classesFolder;
   private final URL pomFile;
   private final URL descriptorFile;
+  private final boolean enableAppTestDependencies;
   private final Map<String, String> applicationProperties;
 
   public ArtifactInfo(List<URI> configs, URL classesFolder, URL pomFile, URL descriptorFile,
-                      Map<String, String> applicationProperties) {
+                      Map<String, String> applicationProperties, boolean enableAppTestDependencies) {
     this.configs = configs;
     this.classesFolder = classesFolder;
     this.pomFile = pomFile;
     this.descriptorFile = descriptorFile;
     this.applicationProperties = applicationProperties;
+    this.enableAppTestDependencies = enableAppTestDependencies;
+  }
+
+  public boolean isEnableAppTestDependencies()
+  {
+    return enableAppTestDependencies;
   }
 
   public Map<String, String> getApplicationProperties() {

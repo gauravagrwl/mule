@@ -48,25 +48,23 @@ public class EmbeddedContainerFactoryTestCase {
       } catch (UnirestException e) {
         throw new RuntimeException(e);
       }
-    });
+    }, false);
   }
 
   @Test
   public void applicationWithTestDependency() throws Exception {
-    doWithinApplication("http-echo", port -> {
+    doWithinApplication("http-test-dependency", port -> {
       try {
-        String httpBody = "org.apache.commons.collections.bag.AbstractBagDecorator";
-        HttpResponse<String> response =
-            null;
-        response = post(String.format("http://localhost:%s/", port)).body(httpBody).asString();
+        String httpBody = "org.mobicents.xcap.client.impl.XcapClientImpl";
+        HttpResponse<String> response = post(String.format("http://localhost:%s/", port)).body(httpBody).asString();
         assertThat(response.getBody(), is(httpBody));
       } catch (UnirestException e) {
         throw new RuntimeException(e);
       }
-    });
+    }, true);
   }
 
-  public void doWithinApplication(String applicaitonFolder, Consumer<Integer> portConsumer)
+  public void doWithinApplication(String applicaitonFolder, Consumer<Integer> portConsumer, boolean enableTestDependencies)
       throws URISyntaxException, IOException {
     Map<String, String> applicationProperties = new HashMap<>();
     Integer httpListenerPort = new FreePortFinder(6000, 9000).find();
@@ -76,10 +74,10 @@ public class EmbeddedContainerFactoryTestCase {
             .singletonList(getClasspathResourceAsUri(applicaitonFolder + File.separator + "mule-config.xml")), null,
                          getClasspathResourceAsUri(applicaitonFolder + File.separator + "pom.xml").toURL(),
                          getClasspathResourceAsUri(applicaitonFolder + File.separator + "mule-application.json").toURL(),
-                         applicationProperties);
+                         applicationProperties, enableTestDependencies);
 
     EmbeddedContainer embeddedContainer =
-        EmbeddedContainerFactory.create("4.0-SNAPSHOT", containerFolder.newFolder().toURL(), application);
+        EmbeddedContainerFactory.create("4.0-SNAPSHOT", containerFolder.newFolder().toURI().toURL(), application);
 
     embeddedContainer.start();
 

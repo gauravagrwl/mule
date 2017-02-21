@@ -17,7 +17,10 @@ import static org.apache.commons.lang3.ArrayUtils.toPrimitive;
 import static org.apache.maven.repository.internal.MavenRepositorySystemUtils.newSession;
 import static org.eclipse.aether.repository.RepositoryPolicy.CHECKSUM_POLICY_IGNORE;
 import static org.eclipse.aether.repository.RepositoryPolicy.UPDATE_POLICY_NEVER;
+import static org.eclipse.aether.resolution.ArtifactDescriptorPolicy.STRICT;
 import static org.eclipse.aether.util.artifact.ArtifactIdUtils.toId;
+import static org.eclipse.aether.util.artifact.JavaScopes.PROVIDED;
+import static org.eclipse.aether.util.artifact.JavaScopes.TEST;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_ARTIFACT_FOLDER;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_PLUGIN_CLASSIFIER;
@@ -87,7 +90,6 @@ import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
 import org.eclipse.aether.spi.connector.transport.TransporterFactory;
 import org.eclipse.aether.transport.file.FileTransporterFactory;
 import org.eclipse.aether.transport.http.HttpTransporterFactory;
-import org.eclipse.aether.util.artifact.JavaScopes;
 import org.eclipse.aether.util.filter.PatternInclusionsDependencyFilter;
 import org.eclipse.aether.util.filter.ScopeDependencyFilter;
 import org.eclipse.aether.util.graph.visitor.PathRecordingDependencyVisitor;
@@ -184,6 +186,9 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
   private DependencyResult assemblyDependenciesFromPom(File artifactFolder, Model model)
       throws InvalidDescriptorLoaderException {
 
+
+    boolean isTestDependenciesEnabled = enabledTestDependencies();
+
     Artifact defaultArtifact = new DefaultArtifact(model.getGroupId(), model.getArtifactId(),
                                                    null,
                                                    "pom",
@@ -198,7 +203,9 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
       List<Dependency> dependencies = artifactDescriptorResult.getDependencies();
       List<Dependency> dependenciesWithExclusions = new ArrayList<>();
       dependencies.stream()
-          .filter(dependency -> !dependency.getScope().equalsIgnoreCase("test"))
+          .filter(dependency -> {
+            return isTestDependenciesEnabled || !dependency.getScope().equalsIgnoreCase("test");
+          })
           .forEach(dependency -> {
             if (MULE_PLUGIN_CLASSIFIER.equals(dependency.getArtifact().getClassifier())) {
               dependenciesWithExclusions.add(dependency.setExclusions(asList(new Exclusion("*", "*", "*", "*"))));
@@ -216,7 +223,8 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
       final CollectResult collectResult = system.collectDependencies(session, currentPluginRequest);
 
       final DependencyRequest currentPluginDependenciesRequest = new DependencyRequest();
-      currentPluginDependenciesRequest.setFilter(new ScopeDependencyFilter(JavaScopes.TEST, JavaScopes.PROVIDED));
+      currentPluginDependenciesRequest.setFilter(new ScopeDependencyFilter(isTestDependenciesEnabled ? new String[] {PROVIDED}
+          : new String[] {PROVIDED, TEST}));
       currentPluginDependenciesRequest.setRoot(collectResult.getRoot());
       currentPluginDependenciesRequest.setCollectRequest(currentPluginRequest);
       final DependencyResult dependencyResult = system.resolveDependencies(session, currentPluginDependenciesRequest);
@@ -238,6 +246,15 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
     }
   }
 
+  /**
+   * Template method to enable/disable test dependencies as part of the artifact classpath.
+   *
+   * @return true if test dependencies must be part of the artifact classpath, false otherwise.
+   */
+  protected boolean enabledTestDependencies() {
+    return false;
+  }
+
   private List<String> getAttribute(Map<String, Object> attributes, String attribute) {
     final Object attributeObject = attributes.getOrDefault(attribute, new ArrayList<String>());
     checkArgument(attributeObject instanceof List, format("The '%s' attribute must be of '%s', found '%s'", attribute,
@@ -254,6 +271,7 @@ public abstract class MavenClassLoaderModelLoader implements ClassLoaderModelLoa
     session.setLocalRepositoryManager(repositorySystem
         .newLocalRepositoryManager(session, new LocalRepository(localRepositoryDirectory)));
     session.setOffline(false);
+    session.setArtifactDescriptorPolicy((session, request) -> STRICT);
     session.setIgnoreArtifactDescriptorRepositories(true);
     session.setWorkspaceReader(new PomWorkspaceReader(localRepositoryDirectory, artifactFile, pluginArtifact));
     system = repositorySystem;

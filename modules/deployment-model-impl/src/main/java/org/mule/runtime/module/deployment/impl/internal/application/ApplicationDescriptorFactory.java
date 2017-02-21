@@ -111,19 +111,19 @@ public class ApplicationDescriptorFactory implements ArtifactDescriptorFactory<A
   }
 
 
-  private BundleDescriptor getBundleDescriptor(File pluginFolder, MuleApplicationModel muleApplicationModel) {
+  private BundleDescriptor getBundleDescriptor(File appFolder, MuleApplicationModel muleApplicationModel) {
     BundleDescriptorLoader bundleDescriptorLoader;
     try {
       bundleDescriptorLoader =
           descriptorLoaderRepository.get(muleApplicationModel.getBundleDescriptorLoader().getId(), APP,
                                          BundleDescriptorLoader.class);
     } catch (LoaderNotFoundException e) {
-      throw new ArtifactDescriptorCreateException(invalidBundleDescriptorLoaderIdError(pluginFolder, muleApplicationModel
+      throw new ArtifactDescriptorCreateException(invalidBundleDescriptorLoaderIdError(appFolder, muleApplicationModel
           .getBundleDescriptorLoader()));
     }
 
     try {
-      return bundleDescriptorLoader.load(pluginFolder, muleApplicationModel.getBundleDescriptorLoader().getAttributes());
+      return bundleDescriptorLoader.load(appFolder, muleApplicationModel.getBundleDescriptorLoader().getAttributes());
     } catch (InvalidDescriptorLoaderException e) {
       throw new ArtifactDescriptorCreateException(e);
     }

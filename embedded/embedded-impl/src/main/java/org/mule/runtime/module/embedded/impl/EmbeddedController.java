@@ -11,6 +11,7 @@ import static org.apache.commons.io.FileUtils.copyFile;
 import static org.mule.runtime.container.api.MuleFoldersUtil.getDomainsFolder;
 import static org.mule.runtime.container.api.MuleFoldersUtil.getServicesFolder;
 import static org.mule.runtime.core.api.config.MuleProperties.MULE_HOME_DIRECTORY_PROPERTY;
+import static org.mule.runtime.module.deployment.impl.internal.application.AppMavenClassLoaderModelLoader.ADD_TEST_DEPENDENCIES_KEY;
 import static org.mule.runtime.module.embedded.impl.SerializationUtils.deserialize;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.container.api.MuleFoldersUtil;
@@ -19,6 +20,7 @@ import org.mule.runtime.core.util.FilenameUtils;
 import org.mule.runtime.deployment.model.api.application.Application;
 import org.mule.runtime.deployment.model.api.application.ApplicationDescriptor;
 import org.mule.runtime.module.deployment.impl.internal.MuleArtifactResourcesRegistry;
+import org.mule.runtime.module.deployment.impl.internal.application.AppMavenClassLoaderModelLoader;
 import org.mule.runtime.module.embedded.api.ArtifactInfo;
 import org.mule.runtime.module.embedded.api.ContainerInfo;
 
@@ -52,6 +54,15 @@ public class EmbeddedController {
   }
 
   private void createApplication() throws IOException, URISyntaxException {
+
+    for (Map.Entry<String, String> applicationPropertiesEntry : artifactInfo.getApplicationProperties().entrySet()) {
+      setProperty(applicationPropertiesEntry.getKey(), applicationPropertiesEntry.getValue());
+    }
+
+    if (artifactInfo.isEnableAppTestDependencies()) {
+      setProperty(ADD_TEST_DEPENDENCIES_KEY, "true");
+    }
+
     MuleArtifactResourcesRegistry artifactResourcesRegistry = new MuleArtifactResourcesRegistry.Builder().build();
     List<String> configResources = new ArrayList<>();
     for (URI uri : artifactInfo.getConfigs()) {
@@ -90,12 +101,9 @@ public class EmbeddedController {
 
     artifactResourcesRegistry.getDomainFactory().createArtifact(createDefaultDomainDir());
 
-    for (Map.Entry<String, String> applicationPropertiesEntry : artifactInfo.getApplicationProperties().entrySet()) {
-      setProperty(applicationPropertiesEntry.getKey(), applicationPropertiesEntry.getValue());
-    }
-
     application = artifactResourcesRegistry.getApplicationFactory().createAppFrom(applicationDescriptor);
   }
+
 
   public void stop() {
     FileUtils.deleteTree(new File(containerInfo.getContainerBaseFolder().getPath()));

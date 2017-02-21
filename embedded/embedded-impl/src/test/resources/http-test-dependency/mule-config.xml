@@ -11,6 +11,6 @@
 
     <flow name="main">
         <httpn:listener path="/" config-ref="httpListenerConfig"/>
-        <set-payload value="#[mel:org.apache.commons.collections.bag.AbstractBagDecorator.class.getName()]"/>
+        <set-payload value="#[mel:Thread.currentThread().getContextClassLoader().loadClass('org.mobicents.xcap.client.impl.XcapClientImpl').getName()]"/>
     </flow>
 </mule>

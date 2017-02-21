@@ -6,20 +6,20 @@
  */
 package org.mule.runtime.module.deployment.impl.internal.application;
 
+import static java.lang.Boolean.getBoolean;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.mule.runtime.core.config.bootstrap.ArtifactType.APP;
 import static org.mule.runtime.deployment.model.api.plugin.ArtifactPluginDescriptor.MULE_PLUGIN_CLASSIFIER;
 import static org.mule.runtime.deployment.model.api.plugin.MavenClassLoaderConstants.MAVEN;
+import static org.mule.runtime.module.artifact.descriptor.BundleScope.COMPILE;
 import static org.mule.runtime.module.deployment.impl.internal.plugin.MavenUtils.getPomModelFolder;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.config.bootstrap.ArtifactType;
 import org.mule.runtime.module.artifact.descriptor.BundleDependency;
 import org.mule.runtime.module.artifact.descriptor.BundleDescriptor;
-import org.mule.runtime.module.artifact.descriptor.BundleScope;
 import org.mule.runtime.module.artifact.descriptor.ClassLoaderModel;
 import org.mule.runtime.module.artifact.descriptor.ClassLoaderModel.ClassLoaderModelBuilder;
 import org.mule.runtime.module.deployment.impl.internal.artifact.MavenClassLoaderModelLoader;
-import org.mule.runtime.module.deployment.impl.internal.plugin.MavenUtils;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
  */
 public class AppMavenClassLoaderModelLoader extends MavenClassLoaderModelLoader {
 
+  public static final String ADD_TEST_DEPENDENCIES_KEY = "mule.embedded.maven.addTestDependenciesToAppClassPath";
   protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   @Override
@@ -67,11 +68,13 @@ public class AppMavenClassLoaderModelLoader extends MavenClassLoaderModelLoader 
           }
 
           try {
-            plugins.add(new BundleDependency.Builder()
+            BundleDependency.Builder builder = new BundleDependency.Builder()
                 .setDescriptor(bundleDescriptorBuilder.build())
-                .setScope(BundleScope.COMPILE)
-                .setBundleUrl(dependency.getArtifact().getFile().toURL())
-                .build());
+                .setScope(COMPILE);
+            if (!dependency.getScope().equalsIgnoreCase("provided")) {
+              builder.setBundleUrl(dependency.getArtifact().getFile().toURI().toURL());
+            }
+            plugins.add(builder.build());
           } catch (MalformedURLException e) {
             throw new MuleRuntimeException(e);
           }
@@ -96,6 +99,11 @@ public class AppMavenClassLoaderModelLoader extends MavenClassLoaderModelLoader 
     } catch (MalformedURLException e) {
       throw new MuleRuntimeException(e);
     }
+  }
+
+  @Override
+  protected boolean enabledTestDependencies() {
+    return getBoolean(ADD_TEST_DEPENDENCIES_KEY);
   }
 
   @Override
